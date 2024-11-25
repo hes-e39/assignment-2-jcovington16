@@ -11,21 +11,36 @@ const TimeDisplay = styled.div`
   margin-bottom: 20px;
 `;
 
-const Stopwatch = () => {
+interface StopwatchProps {
+  duration?: number;  // Optional duration limit
+  onComplete?: () => void;
+}
+
+const Stopwatch: React.FC<StopwatchProps> = ({ duration = 0, onComplete }) => {
   const [time, setTime] = useState(0);
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
     if (isActive) {
-      interval = setInterval(() => setTime((prevTime) => prevTime + 10), 10);
-    } else if (!isActive && time !== 0) {
-      clearInterval(interval);
+      interval = setInterval(() => {
+        setTime((prevTime) => {
+          const newTime = prevTime + 10;
+          if (duration > 0 && newTime >= duration * 1000) {
+            clearInterval(interval);
+            setIsActive(false);
+            if (onComplete) onComplete();
+            return duration * 1000;
+          }
+          return newTime;
+        });
+      }, 10);
     }
     return () => clearInterval(interval);
-  }, [isActive, time]);
+  }, [isActive, duration, onComplete]);
 
   const toggle = () => setIsActive(!isActive);
+  
   const reset = () => {
     setIsActive(false);
     setTime(0);
@@ -33,7 +48,7 @@ const Stopwatch = () => {
 
   return (
     <Panel title="Stopwatch">
-      <HomeButton />
+      {!duration && <HomeButton />}
       <TimeDisplay>{formatTime(time)}</TimeDisplay>
       <Button onClick={toggle}>{isActive ? "Pause" : "Start"}</Button>
       <ResetButton onClick={reset}>Reset</ResetButton>

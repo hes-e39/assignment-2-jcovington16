@@ -12,18 +12,14 @@ const TimeDisplay = styled.div`
   margin-bottom: 20px;
 `;
 
-const FastForwardButton = styled(Button)`
-  background-color: #ff9800;
-  &:hover {
-    background-color: #fb8c00;
-  }
-`;
+interface StatusDisplayProps {
+  $isWorkPhase: boolean;  // Changed from isWorkPhase to $isWorkPhase
+}
 
-const SetNewTimeButton = styled(Button)`
-  background-color: #007bff;
-  &:hover {
-    background-color: #0056b3;
-  }
+const StatusDisplay = styled.div<StatusDisplayProps>`
+  font-size: 2rem;
+  color: ${(props) => (props.$isWorkPhase ? "#4caf50" : "#ff6b6b")};
+  margin-bottom: 10px;
 `;
 
 const RoundDisplay = styled.div`
@@ -31,22 +27,37 @@ const RoundDisplay = styled.div`
   margin-top: 10px;
 `;
 
-const StatusDisplay = styled.div<{ isWorkPhase: boolean }>`
-  font-size: 2rem;
-  color: ${(props) => (props.isWorkPhase ? "#4caf50" : "#ff6b6b")};
-  margin-bottom: 10px;
-`;
+interface TabataProps {
+  rounds?: number;
+  workTime?: number;
+  restTime?: number;
+  onComplete?: () => void;
+}
 
+const Tabata: React.FC<TabataProps> = ({
+  rounds: initialRounds = 8,
+  workTime: initialWorkTime = 20,
+  restTime: initialRestTime = 10,
+  onComplete
+}) => {
+  const [workTime, setWorkTime] = useState(initialWorkTime);
+  const [restTime, setRestTime] = useState(initialRestTime);
+  const [totalRounds, setTotalRounds] = useState(initialRounds);
+  const [remainingTime, setRemainingTime] = useState(initialWorkTime);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [isActive, setIsActive] = useState(false);
+  const [isTimeSet, setIsTimeSet] = useState(!!initialRounds);
+  const [isWorkPhase, setIsWorkPhase] = useState(true);
 
-const Tabata = () => {
-    const [workTime, setWorkTime] = useState(20);
-    const [restTime, setRestTime] = useState(10);
-    const [totalRounds, setTotalRounds] = useState(8);
-    const [remainingTime, setRemainingTime] = useState(workTime); 
-    const [currentRound, setCurrentRound] = useState(1); 
-    const [isActive, setIsActive] = useState(false);
-    const [isTimeSet, setIsTimeSet] = useState(false); 
-    const [isWorkPhase, setIsWorkPhase] = useState(true); 
+  useEffect(() => {
+    if (initialRounds && initialWorkTime && initialRestTime) {
+      setWorkTime(initialWorkTime);
+      setRestTime(initialRestTime);
+      setTotalRounds(initialRounds);
+      setRemainingTime(initialWorkTime);
+      setIsTimeSet(true);
+    }
+  }, [initialRounds, initialWorkTime, initialRestTime]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
@@ -57,17 +68,18 @@ const Tabata = () => {
         setRemainingTime(restTime);
         setIsWorkPhase(false);
       } else {
-        setCurrentRound((prev) => prev + 1);
         if (currentRound < totalRounds) {
+          setCurrentRound((prev) => prev + 1);
           setRemainingTime(workTime);
           setIsWorkPhase(true);
         } else {
           setIsActive(false);
+          if (onComplete) onComplete();
         }
       }
     }
-    return () => clearInterval(interval); // Cleanup interval on component unmount
-  }, [isActive, remainingTime, isWorkPhase, currentRound, totalRounds, workTime, restTime]);
+    return () => clearInterval(interval);
+  }, [isActive, remainingTime, isWorkPhase, currentRound, totalRounds, workTime, restTime, onComplete]);
 
   const handleStart = () => {
     if (remainingTime > 0) {
@@ -77,20 +89,6 @@ const Tabata = () => {
 
   const handleReset = () => {
     setIsActive(false);
-    setRemainingTime(workTime);
-    setCurrentRound(1);
-    setIsWorkPhase(true);
-  };
-
-  const handleFastForward = () => {
-    setIsActive(false);
-    setRemainingTime(0);
-    setCurrentRound(totalRounds);
-  };
-
-  const handleSetNewTime = () => {
-    setIsActive(false);
-    setIsTimeSet(false);
     setRemainingTime(workTime);
     setCurrentRound(1);
     setIsWorkPhase(true);
@@ -111,32 +109,27 @@ const Tabata = () => {
     setRemainingTime(totalWorkSeconds);
     setIsTimeSet(true);
   };
-  
+
   return (
     <Panel title="Tabata Timer">
-      <HomeButton />
+      {!initialRounds && <HomeButton />}
       {isTimeSet ? (
         <>
-        <StatusDisplay isWorkPhase={isWorkPhase}>
-         {isWorkPhase ? "Work" : "Rest"}
-        </StatusDisplay>
+          <StatusDisplay $isWorkPhase={isWorkPhase}>  {/* Changed prop name here too */}
+            {isWorkPhase ? "Work" : "Rest"}
+          </StatusDisplay>
           <TimeDisplay>{formatTime(remainingTime)}</TimeDisplay>
           <RoundDisplay>
             Round {currentRound} of {totalRounds}
           </RoundDisplay>
           <Button onClick={handleStart}>{isActive ? "Pause" : "Start"}</Button>
           <ResetButton onClick={handleReset}>Reset</ResetButton>
-          <FastForwardButton onClick={handleFastForward}>Fast Forward</FastForwardButton>
-          <SetNewTimeButton onClick={handleSetNewTime}>Set New Time</SetNewTimeButton>
         </>
       ) : (
         <RoundTimeInput
-            onSetTime={(workMinutes, workSeconds, restMinutes, restSeconds, rounds) =>
-                handleTimeChange(workMinutes, workSeconds, restMinutes, restSeconds, rounds)
-            }
-            label="Set Work/Rest Time and Rounds"
+          onSetTime={handleTimeChange}
+          label="Set Work/Rest Time and Rounds"
         />
-
       )}
     </Panel>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useTimerContext } from "../components/contex/TimerContext";
 import Countdown from "../components/timers/Countdown";
 import Stopwatch from "../components/timers/Stopwatch";
@@ -73,6 +73,19 @@ const InputGroup = styled.div`
   display: flex;
   gap: 10px;
   align-items: center;
+  margin-bottom: 10px;
+
+  label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  input, select {
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
 `;
 
 const AddButton = styled.button`
@@ -89,6 +102,29 @@ const AddButton = styled.button`
     background-color: #45a049;
   }
 `;
+
+// Timer component interfaces
+interface CountdownProps {
+  initialTime: number;
+  onComplete?: () => void;
+}
+
+interface StopwatchProps {
+  onComplete?: () => void;
+}
+
+interface XYProps {
+  rounds?: number;
+  timePerRound?: number;
+  onComplete?: () => void;
+}
+
+interface TabataProps {
+  rounds?: number;
+  workTime?: number;
+  restTime?: number;
+  onComplete?: () => void;
+}
 
 const AddTimerHomeView: React.FC = () => {
   const { state, dispatch } = useTimerContext();
@@ -108,7 +144,7 @@ const AddTimerHomeView: React.FC = () => {
         newTimer = {
           id: Date.now(),
           type: "countdown",
-          duration: duration,
+          duration: Number(duration),
           state: "not running" as const
         };
         break;
@@ -196,15 +232,63 @@ const AddTimerHomeView: React.FC = () => {
     if (activeTimerIndex === null || !state.timers[activeTimerIndex]) return null;
     
     const timer = state.timers[activeTimerIndex];
+
     switch (timer.type) {
       case "countdown":
-        return <Countdown />;
+        const CountdownTimer = Countdown as React.FC<CountdownProps>;
+        return (
+          <div>
+            <CountdownTimer 
+              key={timer.id}
+              initialTime={Number(timer.duration)}
+              onComplete={() => {
+            
+                if (activeTimerIndex < state.timers.length - 1) {
+                  fastForward();
+                }
+              }}
+            />
+          </div>
+        );
       case "stopwatch":
-        return <Stopwatch />;
+        const StopwatchTimer = Stopwatch as React.FC<StopwatchProps>;
+        return <StopwatchTimer 
+          key={timer.id}
+          onComplete={() => {
+            if (activeTimerIndex < state.timers.length - 1) {
+              fastForward();
+            }
+          }}
+        />;
       case "xy":
-        return <XY />;
+        const XYTimer = XY as React.FC<XYProps>;
+        return (
+          <XYTimer
+            key={timer.id}
+            rounds={timer.config?.rounds}
+            timePerRound={timer.config?.timePerRound}
+            onComplete={() => {
+              if (activeTimerIndex < state.timers.length - 1) {
+                fastForward();
+              }
+            }}
+          />
+        );
       case "tabata":
-        return <Tabata />;
+        const TabataTimer = Tabata as React.FC<TabataProps>;
+        return (
+          <TabataTimer
+            key={timer.id}
+            rounds={timer.config?.rounds}
+            workTime={timer.config?.workTime}
+            restTime={timer.config?.restTime}
+            onComplete={() => {
+              if (activeTimerIndex < state.timers.length - 1) {
+                fastForward();
+              }
+            }}
+          />
+        );
       default:
         return null;
     }

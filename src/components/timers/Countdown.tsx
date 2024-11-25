@@ -19,60 +19,97 @@ const SetNewTimeButton = styled(Button)`
   }
 `;
 
-const Countdown = () => {
-    const [time, setTime] = useState(0);
-    const [remainingTime, setRemainingTime] = useState(0);
-    const [isTimeSet, setIsTimeSet] = useState(false);
+interface CountdownProps {
+  initialTime?: number;
+  onComplete?: () => void;
+}
+
+const Countdown: React.FC<CountdownProps> = ({ initialTime, onComplete }) => {
+    console.log('Countdown props:', { initialTime, onComplete }); // Debug log
+
+    const [time, setTime] = useState(initialTime || 0);
+    const [remainingTime, setRemainingTime] = useState(initialTime || 0);
+    const [isTimeSet, setIsTimeSet] = useState(!!initialTime);
     const [isActive, setIsActive] = useState(false);
+
+    // Effect to handle initialTime changes
+    useEffect(() => {
+      console.log('Effect triggered - initialTime:', initialTime);
+      if (initialTime && initialTime > 0) {
+          console.log('Setting time to:', initialTime);
+          setTime(initialTime);
+          setRemainingTime(initialTime);
+          setIsTimeSet(true);
+      }
+  }, [initialTime]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout | undefined;
-        if(isActive && remainingTime > 0) {
-            interval = setInterval(() => setRemainingTime((prev) => prev -1), 1000);
+        if (isActive && remainingTime > 0) {
+            interval = setInterval(() => {
+                setRemainingTime((prev) => {
+                    const newTime = prev - 1;
+                    if (newTime <= 0 && onComplete) {
+                        setIsActive(false);
+                        onComplete();
+                    }
+                    return newTime;
+                });
+            }, 1000);
         } else if (remainingTime <= 0) {
             setIsActive(false);
             clearInterval(interval);
+            if (onComplete) {
+                onComplete();
+            }
         }
         return () => clearInterval(interval);
-    }, [isActive, remainingTime]);
+    }, [isActive, remainingTime, onComplete]);
 
     const handleStart = () => {
         toggleTimerActiveState(remainingTime, isActive, setIsActive);
-      };
+    };
 
     const handleResetTime = () => {
         setIsActive(false);
         setRemainingTime(time);
-    }
+    };
 
     const handleSetNewTime = () => {
         setIsActive(false);
-        setIsTimeSet(false); // this should show the input component again to set a new time. 
+        setIsTimeSet(false);
         setRemainingTime(0);
-    }
+    };
 
     const handleTime = (hours: number, minutes: number, seconds: number) => {
         const totalSeconds = hours * 3600 + minutes * 60 + seconds;
         setTime(totalSeconds);
         setRemainingTime(totalSeconds);
         setIsTimeSet(true);
-    }
+    };
+
+    console.log('Countdown render state:', { 
+        time, 
+        remainingTime, 
+        isTimeSet, 
+        isActive 
+    }); // Debug log
     
     return (
         <Panel title="Countdown Timer">
-        <HomeButton />
-        {isTimeSet ? (
-          <>
-            <TimeDisplay>{formatTime(remainingTime)}</TimeDisplay>
-            <Button onClick={handleStart}>{isActive ? "Pause" : "Start"}</Button>
-            <ResetButton onClick={handleResetTime}>Reset</ResetButton>
-            <SetNewTimeButton onClick={handleSetNewTime}>New Time</SetNewTimeButton>
-          </>
-        ) : (
-          <Input onChange={handleTime} label="Set Countdown Time" />
-        )}
-      </Panel>
-    )
+            {!initialTime && <HomeButton />}
+            {isTimeSet ? (
+                <>
+                    <TimeDisplay>{formatTime(remainingTime)}</TimeDisplay>
+                    <Button onClick={handleStart}>{isActive ? "Pause" : "Start"}</Button>
+                    <ResetButton onClick={handleResetTime}>Reset</ResetButton>
+                    {!initialTime && <SetNewTimeButton onClick={handleSetNewTime}>New Time</SetNewTimeButton>}
+                </>
+            ) : (
+                <Input onChange={handleTime} label="Set Countdown Time" />
+            )}
+        </Panel>
+    );
 };
 
 export default Countdown;
